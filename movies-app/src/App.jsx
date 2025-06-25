@@ -1,91 +1,108 @@
 import './App.css'
-import React, {PureComponent} from 'react'
-import {Avatar, Card, Grid, Typography} from '@material-ui/core'
+import React, { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
+import { Grid } from "@mui/material"
+import Card from './components/Card'
+import { getMovies, getStudios } from './api'
+import Filters from './components/Filters'
+import TransferMovieModal from './modals/TransferMovie'
 
-//TODO: 2 Move these calls into a proper api layer
-const domain = 'http://localhost:3000'
-const defaultAvatar = 'https://image.shutterstock.com/image-vector/male-avatar-profile-picture-vector-600w-149083895.jpg'
+const NewApp = () => {
+  const [studios, setStudios] = useState([])
+  const [movies, setMovies] = useState([])
+  const [responsiveStyle, setResponsiveStyle] = useState({ avatarSize: 280, cardStyle: 'regularCard' })
 
-//TODO: 1 this is a really old class component refactor it into a modern functional component
-class App extends PureComponent {
-  constructor() {
-    super();
-    this.state = {
-      studios: [],
-      movies: [],
-      avatarSize: 280,
-      cardStyle: 'regularCard'
+  const [titleFilter, setTitleFilter] = useState('') 
+  const [selectedGenres, setSelectedGenres] = useState([])
+  const [priceRange, setPriceRange] = useState({ from: 0, to: 5000 })
+
+  const [movieToTransfer, setMovieToTransfer] = useState(null)
+
+  const updateMovies = async () => {
+    return Promise.all([getMovies(), getStudios()]).then(responses => {
+      setMovies(responses[0])
+      setStudios(responses[1])
+    })
+  }
+
+  useEffect(() => {
+    let timeoutId
+
+    const handleResize = () => {
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => {
+        setResponsiveStyle(
+          window.innerWidth < 600
+            ? { avatarSize: 60, cardStyle: 'smallCard' }
+            : { avatarSize: 280, cardStyle: 'regularCard' }
+        );
+      }, 150)
     }
-    this.responsiveStyle = this.responsiveStyle.bind(this);
-  }
 
-  componentDidMount() {
-    window.addEventListener('resize', this.responsiveStyle)
-    fetch(`${domain}/studios`)
-      .then(response => {
-        return response.json();
-      })
-      .then(studios => {
-        this.setState({studios})
-      });
-    fetch(`${domain}/movies`)
-      .then(response => {
-        return response.json();
-      })
-      .then(movies => {
-        this.setState({movies})
-      });
-  }
+    window.addEventListener('resize', handleResize)
 
-  responsiveStyle() {
-    //TODO: produce a better resize strategy
-    if (window.innerWidth < 601) {
-      console.log(window.innerWidth)
-      this.setState({avatarSize: 60, cardStyle: 'smallCard'})
-    } else {
-      this.setState({avatarSize: 280, cardStyle: 'regularCard'})
+    handleResize()
+    
+    updateMovies()
+
+    return () => {
+      window.removeEventListener('resize', handleResize)
+      clearTimeout(timeoutId)
     }
-  }
 
-
-  render() {
-    const {movies, studios, avatarSize} = this.state
-
-    return (
-      <div className="App">
-        <div className="App-studios App-flex"> {
-          //TODO: 4 Filter the movies by genre, price and title
-        }
+  }, [])
+  
+  return (
+    <>
+    <div className="App">
+        <div className="App-studios App-flex"> 
+          
+          <Filters 
+            titleFilter={titleFilter} 
+            setTitleFilter={setTitleFilter}
+            selectedGenres={selectedGenres}
+            setSelectedGenres={setSelectedGenres}
+            priceRange={priceRange}
+            setPriceRange={setPriceRange}
+          />
+          
           <h3>Images:</h3>
           <Grid container justify="center" alignItems="center">
-            {movies.map(movie =>
-              //TODO: 3 move styles into a separate js file and export this class using withStyles or similar or just to css file
-              <Grid item xs={12} sm={6} lg={4}>
-                <Card className={this.state.cardStyle}>
-                  <Avatar alt={movie.name} src={movie.img ? movie.img : defaultAvatar}
-                          style={{margin: 5, width: avatarSize, height: avatarSize}}/>
-                  <div>
-                    <Typography style={{display: 'inline-block'}}>
-                      {movie.name + ' '}
-                      <Typography style={{fontWeight: 'bold', display: 'inline-block'}}>
-                        {movie.position}
-                      </Typography>
-                    </Typography>
-                  </div>
-                  <Typography>{
-                    // eslint-disable-next-line
-                    studios.map(studio => {
-                    if (movie.studioId === studio.id) {
-                      return studio.name
-                    }
-                  })}</Typography>
-                </Card>
-              </Grid>)}
+            {
+              movies
+                .filter(movie => 
+                  movie.name.toLocaleLowerCase().includes(titleFilter.toLocaleLowerCase())
+                )
+                .filter(movie => selectedGenres.length > 0 ? selectedGenres.includes(movie.genreName) : true)
+                .filter(movie => priceRange.from <= movie.price && movie.price <= priceRange.to )
+                .map(movie =>
+                <Card 
+                  key={movie.id} 
+                  movie={movie} 
+                  avatarSize={responsiveStyle.avatarSize} 
+                  cardStyle={responsiveStyle.cardStyle} 
+                  studios={studios}
+                  setMovieToTransfer={setMovieToTransfer}
+                />
+              )
+            }
           </Grid>
         </div>
       </div>
+      {
+        movieToTransfer !== null && createPortal(
+          <TransferMovieModal 
+            onClose={() => setMovieToTransfer(null) } 
+            selectedMovie={movieToTransfer} 
+            studios={studios.filter(studio => Number(studio.id) !== Number(movieToTransfer.studioId))}
+            updateMovies={updateMovies}
+          />,
+          document.body
+        )
+      }
+    </>
+      
     )
-  }
 }
 
-export default App
+export default React.memo(NewApp)

@@ -55,6 +55,11 @@
   font-weight: bold;
 }
 
+.filters-box {
+  display: flex;
+  justify-content: center;
+}
+
 .regularCard {
   border: 1px solid gray;
   border-radius: 4px;
