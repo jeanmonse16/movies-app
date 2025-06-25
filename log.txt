@@ -1,0 +1,26 @@
+1- material ui and react versions were uncompatible so I had to run an update to those dependencies, the major breaking change was with material ui that has changed a lot since this challenge was created. So a little research was needed to update and fix all of its components implementations
+
+2- to run the project I set up a vite based build process. That is why the index.html is at the root directory.
+
+3- when refactoring the App component. In order to replicate the re-render check that the pureComponent class was providing to the app Component. I added a react.memo implementation on the functional component.
+
+4- I added a debounce effect on the resize listener so it doesnt trigger excessively everytime its called
+
+5- added a cleanup function to clear the resize events on the useEffect
+
+6- Since I was having CORS issues with some images. I added the referrerPolicy property witg the "no referrer" to solve it
+
+7- I saw that in the previous code, there was a property called position, that for some reason was meant to be the genre string of the movie. Since I believe it was this way, I modified the property in the backend to be served as "genreName" and therefore in the frontend to be used as that.
+
+8- To add the transfer movie feature, I tried to do it a simple yet as functional as possible. So a modal where you just have to pick the target studio to do the transfer was everything I need to do design. Even though the service handles every possible exception; the front validates that you can only transfer to enabled studios.
+
+-9 For the filters design, after some thoughts I decided that it was better for the genre one, to work as it would be a select input. and for the price filter to work as a range.
+
+-10 since I was in need of the movies genre, I added in the get /movies endpoint a genreName property which allowed me to build easily the genre filter. 
+
+-11 I designed the post /movie/transfer to require the movieId and the studioId, I built a reduce function to get the targeted movie and studio. It would iterate through all the studios until it finds the selected movie.
+
+-12 I discovered that some images were missing from their movies in the sony studio. So when building the movies for the get /movies, I checked that when building the sony movies, to add the respective images to the movies.
+
+-13 in the get /movies endpoint. id and price properties were being removed, since I needed them for the movies map, I added them back.
+
