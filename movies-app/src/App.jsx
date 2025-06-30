@@ -1,15 +1,18 @@
 import './App.css'
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { Grid } from "@mui/material"
 import Card from './components/Card'
 import { getMovies, getStudios } from './api'
 import Filters from './components/Filters'
 import TransferMovieModal from './modals/TransferMovie'
+import NoMoviesFound from './components/NoMoviesFoundMessage'
+import Loading from './components/Loading'
 
-const NewApp = () => {
+const App = () => {
   const [studios, setStudios] = useState([])
   const [movies, setMovies] = useState([])
+  const [loader, setLoader] = useState(false)
   const [responsiveStyle, setResponsiveStyle] = useState({ avatarSize: 280, cardStyle: 'regularCard' })
 
   const [titleFilter, setTitleFilter] = useState('') 
@@ -19,10 +22,15 @@ const NewApp = () => {
   const [movieToTransfer, setMovieToTransfer] = useState(null)
 
   const updateMovies = async () => {
-    return Promise.all([getMovies(), getStudios()]).then(responses => {
-      setMovies(responses[0])
-      setStudios(responses[1])
-    })
+    setLoader(true)
+    return Promise.all([getMovies(), getStudios()])
+      .then(responses => {
+        setMovies(responses[0])
+        setStudios(responses[1])
+      })
+      .then(() => setLoader(false))
+      .catch(() => setLoader(false))
+      
   }
 
   useEffect(() => {
@@ -51,6 +59,13 @@ const NewApp = () => {
     }
 
   }, [])
+
+  const filteredMovies = () => movies
+      .filter(movie => 
+        movie.name.toLocaleLowerCase().includes(titleFilter.toLocaleLowerCase())
+      )
+      .filter(movie => selectedGenres.length > 0 ? selectedGenres.includes(movie.genreName) : true)
+      .filter(movie => priceRange.from <= movie.price && movie.price <= priceRange.to )
   
   return (
     <>
@@ -67,14 +82,17 @@ const NewApp = () => {
           />
           
           <h3>Images:</h3>
-          <Grid container justify="center" alignItems="center">
+           <div 
+      
+    >
+      {
+        loader
+          ? <Loading />
+          : <Grid container justify="center" alignItems="center">
             {
-              movies
-                .filter(movie => 
-                  movie.name.toLocaleLowerCase().includes(titleFilter.toLocaleLowerCase())
-                )
-                .filter(movie => selectedGenres.length > 0 ? selectedGenres.includes(movie.genreName) : true)
-                .filter(movie => priceRange.from <= movie.price && movie.price <= priceRange.to )
+              filteredMovies().length === 0
+                ? <NoMoviesFound />
+                : filteredMovies()
                 .map(movie =>
                 <Card 
                   key={movie.id} 
@@ -87,7 +105,11 @@ const NewApp = () => {
               )
             }
           </Grid>
-        </div>
+      }
+
+    </div>
+         
+    </div>
       </div>
       {
         movieToTransfer !== null && createPortal(
@@ -105,4 +127,4 @@ const NewApp = () => {
     )
 }
 
-export default React.memo(NewApp)
+export default React.memo(App)
